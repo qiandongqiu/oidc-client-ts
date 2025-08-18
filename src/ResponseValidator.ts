@@ -207,9 +207,10 @@ export class ResponseValidator {
             if (incoming.sub !== existing.sub) {
                 logger.throw(new Error("sub in id_token does not match current sub"));
             }
-            if (incoming.auth_time && incoming.auth_time !== existing.auth_time) {
-                logger.throw(new Error("auth_time in id_token does not match original auth_time"));
-            }
+            // disable auth_time validation so that users can log in from multiple tabs
+            // if (incoming.auth_time && incoming.auth_time !== existing.auth_time) {
+            //     logger.throw(new Error("auth_time in id_token does not match original auth_time"));
+            // }
             if (incoming.azp && incoming.azp !== existing.azp) {
                 logger.throw(new Error("azp in id_token does not match original azp"));
             }
