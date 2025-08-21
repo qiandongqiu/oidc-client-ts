@@ -11,9 +11,11 @@ import type { SigninResponse } from "./SigninResponse";
 import type { SignoutResponse } from "./SignoutResponse";
 import type { OidcClientSettingsStore } from "./OidcClientSettings";
 import { mocked } from "jest-mock";
+import type { RefreshState } from "./RefreshState";
 
 describe("ResponseValidator", () => {
     let stubState: SigninState;
+    let stubRefreshState: RefreshState;
     let stubResponse: SigninResponse & SignoutResponse;
     let settings: OidcClientSettingsStore;
     let metadataService: MetadataService;
@@ -37,6 +39,13 @@ describe("ResponseValidator", () => {
             client_id: "client",
             loadUserInfo: true,
         } as OidcClientSettingsStore;
+
+        stubRefreshState = {
+            scope: "openid",
+            id_token: "refreshed_id_token",
+            data: { some: "data" },
+        } as RefreshState;
+
         metadataService = new MetadataService(settings);
 
         claimsService = new ClaimsService(settings);
@@ -758,6 +767,71 @@ describe("ResponseValidator", () => {
                 sub: "subsub",
                 nickname: "Nick",
             });
+        });
+
+        it("should fail if auth_time in existing id_token does not match auth_time in refreshed id_token", async () => {
+            // arrange
+            Object.assign(settings, { loadUserInfo: true });
+            Object.assign(stubResponse, {
+                isOpenId: true,
+                access_token: "access_token",
+                id_token: "existing_id_token",
+            });
+
+            jest.spyOn(JwtUtils, "decode").mockImplementation( (token) => {
+                if (token == "existing_id_token") {
+                    return { sub: "sub", auth_time: "time1" };
+                } else {
+                    return { sub: "sub", auth_time: "time2" };
+                }
+            });
+
+            // act
+            await expect(
+                subject.validateRefreshResponse(stubResponse, stubRefreshState),
+            )
+                // assert
+                .rejects.toThrow(
+                    "auth_time in id_token does not match original auth_time",
+                );
+        });
+
+        it("should succeed if auth_time in existing id_token does not match auth_time in refreshed id_token but validation is disabled", async () => {
+            // arrange
+            const settingsWithValidationDisabled = {
+                ...settings,
+                disableValidationForAuthTime: true,
+            };
+
+            Object.assign(settingsWithValidationDisabled, { loadUserInfo: true });
+            Object.assign(stubResponse, {
+                isOpenId: true,
+                access_token: "access_token",
+                id_token: "existing_id_token",
+            });
+
+            jest.spyOn(JwtUtils, "decode").mockImplementation( (token) => {
+                if (token == "existing_id_token") {
+                    return { sub: "sub", auth_time: "time1" };
+                } else {
+                    return { sub: "sub", auth_time: "time2" };
+                }
+            });
+
+            const subjectWithValidationDisabled = new ResponseValidator(settingsWithValidationDisabled, metadataService, claimsService);
+            jest.spyOn(subjectWithValidationDisabled["_tokenClient"], "exchangeCode").mockResolvedValue(
+                {},
+            );
+            jest.spyOn(subjectWithValidationDisabled["_userInfoService"], "getClaims").mockResolvedValue({
+                nickname: "Nick",
+                sub: "sub",
+            });
+
+            // act
+            await expect(
+                subjectWithValidationDisabled.validateRefreshResponse(stubResponse, stubRefreshState),
+            )
+                .resolves.toBe(undefined);
         });
     });
 });

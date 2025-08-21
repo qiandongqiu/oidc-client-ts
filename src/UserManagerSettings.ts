@@ -84,6 +84,11 @@ export interface UserManagerSettings extends OidcClientSettings {
      *  E.g. `userStore: new WebStorageStateStore({ store: window.localStorage })`
      */
     userStore?: StateStore;
+
+    /**
+     * Flat to control whether to validate auth_time in refreshed id_token against existing id_token
+     */
+    disableValidationForAuthTime?: boolean;
 }
 
 /**
@@ -123,6 +128,8 @@ export class UserManagerSettingsStore extends OidcClientSettingsStore {
 
     public readonly userStore: StateStore;
 
+    public readonly disableValidationForAuthTime: boolean;
+
     public constructor(args: UserManagerSettings) {
         const {
             popup_redirect_uri = args.redirect_uri,
@@ -155,6 +162,7 @@ export class UserManagerSettingsStore extends OidcClientSettingsStore {
             accessTokenExpiringNotificationTimeInSeconds = DefaultAccessTokenExpiringNotificationTimeInSeconds,
 
             userStore,
+            disableValidationForAuthTime = false,
         } = args;
 
         super(args);
@@ -186,6 +194,8 @@ export class UserManagerSettingsStore extends OidcClientSettingsStore {
         this.includeIdTokenInSilentSignout = includeIdTokenInSilentSignout;
 
         this.accessTokenExpiringNotificationTimeInSeconds = accessTokenExpiringNotificationTimeInSeconds;
+
+        this.disableValidationForAuthTime = disableValidationForAuthTime;
 
         if (userStore) {
             this.userStore = userStore;

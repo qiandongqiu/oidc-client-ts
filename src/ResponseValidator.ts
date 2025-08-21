@@ -15,6 +15,7 @@ import type { UserProfile } from "./User";
 import type { RefreshState } from "./RefreshState";
 import type { IdTokenClaims } from "./Claims";
 import type { ClaimsService } from "./ClaimsService";
+import type { UserManagerSettings } from "./UserManagerSettings";
 
 /**
  * @internal
@@ -208,9 +209,9 @@ export class ResponseValidator {
                 logger.throw(new Error("sub in id_token does not match current sub"));
             }
             // disable auth_time validation so that users can log in from multiple tabs
-            // if (incoming.auth_time && incoming.auth_time !== existing.auth_time) {
-            //     logger.throw(new Error("auth_time in id_token does not match original auth_time"));
-            // }
+            if (incoming.auth_time && (!(this._settings as UserManagerSettings).disableValidationForAuthTime) && incoming.auth_time !== existing.auth_time) {
+                logger.throw(new Error("auth_time in id_token does not match original auth_time"));
+            }
             if (incoming.azp && incoming.azp !== existing.azp) {
                 logger.throw(new Error("azp in id_token does not match original azp"));
             }
